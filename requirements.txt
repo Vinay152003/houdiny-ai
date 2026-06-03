@@ -1,0 +1,7 @@
+anthropic
+resend
+twilio
+python-dotenv
+flask
+flask-sqlalchemy
+pyngrok

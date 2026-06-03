@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Houdiny AI</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <style>
+    :root {
+      --bg-main:    #0c0c14;
+      --bg-card:    #13131f;
+      --bg-card2:   #1a1a28;
+      --border-col: rgba(255,255,255,0.08);
+      --accent:     #4f8ef7;
+      --accent-hov: #3a7de8;
+    }
+    body { background: var(--bg-main); color: #e2e2ee; font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* Navbar */
+    .hn-nav {
+      background: var(--bg-card) !important;
+      border-bottom: 1px solid var(--border-col);
+      padding: 12px 0;
+    }
+    .hn-logo {
+      width: 30px; height: 30px; background: var(--accent);
+      border-radius: 8px; display: inline-flex; align-items: center;
+      justify-content: center; font-weight: 800; font-size: 13px;
+      color: #fff; margin-right: 8px;
+    }
+    .hn-brand { font-weight: 700; font-size: 16px; color: #fff !important; text-decoration: none; }
+    .hn-navlink { color: #888 !important; font-size: 14px; padding: 6px 12px; border-radius: 8px; text-decoration: none; }
+    .hn-navlink:hover { color: #fff !important; background: rgba(255,255,255,0.06); }
+    .hn-btn { background: var(--accent) !important; border: none; border-radius: 10px; font-size: 14px; font-weight: 500; padding: 8px 18px; color: #fff !important; text-decoration: none; }
+    .hn-btn:hover { background: var(--accent-hov) !important; }
+
+    /* Cards */
+    .hn-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-col);
+      border-radius: 14px;
+    }
+    .hn-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-col);
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    /* Stat cards */
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border-col); border-radius: 14px; padding: 18px 20px; }
+    .stat-icon { font-size: 20px; margin-bottom: 10px; }
+    .stat-val  { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-lbl  { font-size: 12px; color: #666; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    /* Table */
+    .hn-table { color: #d0d0e0; }
+    .hn-table thead th { background: var(--bg-card2); color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; font-weight: 600; padding: 12px 16px; border-bottom: 1px solid var(--border-col); }
+    .hn-table tbody td { padding: 14px 16px; vertical-align: middle; border-bottom: 1px solid var(--border-col); font-size: 14px; }
+    .hn-table tbody tr:hover td { background: rgba(255,255,255,0.025); }
+    .hn-table tbody tr:last-child td { border-bottom: none; }
+    .lead-name { font-weight: 600; color: #e8e8f5; }
+    .lead-company { font-size: 12px; color: #555; margin-top: 2px; }
+    .lead-name-link:hover .lead-name { color: var(--accent); }
+    .lead-name-link { text-decoration: none; }
+
+    /* Status badges */
+    .s-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .s-notsent   { background: rgba(255,255,255,0.06); color: #666; }
+    .s-contacted { background: rgba(79,142,247,0.15); color: #6ba3f7; border: 1px solid rgba(79,142,247,0.3); }
+    .s-replied   { background: rgba(234,179,8,0.15);  color: #f0c040; border: 1px solid rgba(234,179,8,0.3); }
+    .s-interested{ background: rgba(34,197,94,0.15);  color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .s-booked    { background: rgba(168,85,247,0.15); color: #c084fc; border: 1px solid rgba(168,85,247,0.3); }
+
+    /* Action buttons */
+    .act-btn { padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 500; border: none; cursor: pointer; text-decoration: none; display: inline-block; }
+    .act-view  { background: rgba(255,255,255,0.07); color: #aaa; }
+    .act-view:hover  { background: rgba(255,255,255,0.12); color: #fff; }
+    .act-email { background: rgba(79,142,247,0.15); color: #6ba3f7; border: 1px solid rgba(79,142,247,0.3); }
+    .act-email:hover { background: rgba(79,142,247,0.28); color: #93bbff; }
+    .act-wa    { background: rgba(34,197,94,0.15); color: #4ade80; border: 1px solid rgba(34,197,94,0.3); }
+    .act-wa:hover  { background: rgba(34,197,94,0.28); color: #86efac; }
+    .act-del   { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+    .act-del:hover { background: rgba(239,68,68,0.2); color: #fca5a5; }
+
+    /* Form inputs */
+    .hn-input {
+      background: #0e0e1a !important;
+      border: 1px solid rgba(255,255,255,0.1) !important;
+      border-radius: 10px !important;
+      color: #e2e2ee !important;
+      padding: 10px 14px !important;
+      font-size: 14px !important;
+    }
+    .hn-input:focus { border-color: var(--accent) !important; outline: none !important; box-shadow: 0 0 0 3px rgba(79,142,247,0.15) !important; }
+    .hn-input::placeholder { color: #444 !important; }
+    .hn-label { font-size: 13px; font-weight: 500; color: #aaa; margin-bottom: 6px; }
+
+    /* Chat panels */
+    .chat-panel { background: var(--bg-card); border: 1px solid var(--border-col); border-radius: 14px; display: flex; flex-direction: column; min-height: 480px; }
+    .chat-header { padding: 14px 18px; border-bottom: 1px solid var(--border-col); background: var(--bg-card2); border-radius: 14px 14px 0 0; display: flex; align-items: center; justify-content: space-between; }
+    .chat-body { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+    .chat-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #444; font-size: 14px; }
+
+    .msg-row-sent     { display: flex; justify-content: flex-end; }
+    .msg-row-received { display: flex; justify-content: flex-start; }
+    .msg-wrap { max-width: 80%; }
+    .msg-meta { font-size: 11px; color: #555; margin-bottom: 4px; }
+    .msg-meta-right { text-align: right; }
+    /* white-space: pre-wrap preserves real \n newlines — no <br> injection needed */
+    .bubble-sent     { background: #2563eb; color: #fff; padding: 10px 14px; border-radius: 16px 16px 4px 16px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .bubble-sent-wa  { background: #16a34a; color: #fff; padding: 10px 14px; border-radius: 16px 16px 4px 16px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+    .bubble-received { background: var(--bg-card2); color: #d5d5e8; border: 1px solid var(--border-col); padding: 10px 14px; border-radius: 16px 16px 16px 4px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; word-break: break-word; }
+
+    /* Info card rows */
+    .info-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 10px; font-size: 13px; }
+    .info-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+    .info-val  { color: #ccc; word-break: break-all; }
+
+    /* Flash */
+    .flash-success { background: rgba(34,197,94,0.1);  border: 1px solid rgba(34,197,94,0.25); color: #4ade80; border-radius: 10px; padding: 10px 16px; font-size: 13px; margin-bottom: 14px; }
+    .flash-error   { background: rgba(239,68,68,0.1);  border: 1px solid rgba(239,68,68,0.25); color: #f87171; border-radius: 10px; padding: 10px 16px; font-size: 13px; margin-bottom: 14px; }
+    .flash-info    { background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.25); color: #6ba3f7; border-radius: 10px; padding: 10px 16px; font-size: 13px; margin-bottom: 14px; }
+  </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="hn-nav">
+  <div class="container-xl d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3">
+      <a href="/" class="d-flex align-items-center text-decoration-none">
+        <span class="hn-logo">H</span>
+        <span class="hn-brand">Houdiny AI</span>
+      </a>
+      <a href="/" class="hn-navlink d-none d-sm-inline">Dashboard</a>
+      <a href="/leads/add" class="hn-navlink d-none d-sm-inline">Add Lead</a>
+    </div>
+    <a href="/leads/add" class="hn-btn">+ Add Lead</a>
+  </div>
+</nav>
+
+<!-- Flash messages -->
+<div class="container-xl mt-3">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, message in messages %}
+        <div class="flash-{{ category }}">
+          {% if category == 'success' %}✓{% elif category == 'error' %}✗{% else %}ℹ{% endif %}
+          {{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+</div>
+
+<!-- Main -->
+<div class="container-xl py-4">
+  {% block content %}{% endblock %}
+</div>
+
+</body>
+</html>

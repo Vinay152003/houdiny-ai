@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+{% block content %}
+
+<script>
+const LEAD_ID   = {{ lead.id }};
+const LEAD_NAME = {{ lead.name | tojson }};
+
+/* ── Status badge helper ────────────────────────────── */
+const STATUS_CLASS = {
+  "Not Sent":   "s-notsent",
+  "Contacted":  "s-contacted",
+  "Replied":    "s-replied",
+  "Interested": "s-interested",
+  "Booked":     "s-booked"
+};
+const STATUS_LABEL = {
+  "Not Sent":   "Not Sent",
+  "Contacted":  "● Contacted",
+  "Replied":    "● Replied",
+  "Interested": "● Interested ✓",
+  "Booked":     "● Booked 📅"
+};
+
+function updateStatusBadge(channel, status) {
+  const ids = channel === "email"
+    ? ["badge-email-detail", "badge-email-panel"]
+    : ["badge-wa-detail",    "badge-wa-panel"];
+  ids.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.className = "s-badge " + (STATUS_CLASS[status] || "s-notsent");
+    el.textContent = STATUS_LABEL[status] || status;
+  });
+}
+
+/* ── Append a new chat bubble ───────────────────────── */
+function escHtml(s) {
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function getBubble(channel, direction) {
+  if (direction === "received") return "bubble-received";
+  return channel === "whatsapp" ? "bubble-sent-wa" : "bubble-sent";
+}
+
+function stripQuoted(text) {
+  /* Remove Gmail quoted text (lines starting with > or "On ... wrote:") */
+  var lines = text.split("\n"), out = [];
+  for (var i = 0; i < lines.length; i++) {
+    var t = lines[i].trim();
+    if (t.startsWith(">") || /^On .+wrote:/.test(t)) break;
+    out.push(lines[i]);
+  }
+  return out.join("\n").trim();
+}
+
+function appendBubble(channel, direction, content, ts) {
+  const bodyId = channel === "email" ? "email-chat-body" : "wa-chat-body";
+  const body   = document.getElementById(bodyId);
+  if (!body) return;
+
+  const empty = body.querySelector(".chat-empty");
+  if (empty) empty.remove();
+
+  // Strip quoted text from received emails
+  var displayText = (channel === "email" && direction === "received")
+    ? stripQuoted(content) : content;
+
+  // Handle old "Subject: ..." format
+  var subjectHtml = "";
+  if (channel === "email" && direction === "sent" && displayText.startsWith("Subject: ")) {
+    var idx = displayText.indexOf("\n\n");
+    if (idx > -1) {
+      subjectHtml = '<span style="display:block;font-size:11px;font-weight:700;opacity:.8;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.2)">' + escHtml(displayText.substring(9, idx)) + '</span>';
+      displayText = displayText.substring(idx + 2);
+    }
+  }
+
+  const isRight = direction === "sent";
+  const bubbleEl = document.createElement("div");
+  bubbleEl.className = getBubble(channel, direction);
+  if (subjectHtml) bubbleEl.innerHTML = subjectHtml;
+  // Use textContent so \n is preserved by white-space:pre-wrap — no <br> needed
+  const textNode = document.createTextNode(displayText);
+  bubbleEl.appendChild(textNode);
+
+  const row = document.createElement("div");
+  row.className = `msg-row-${direction}`;
+  row.style.animation = "slide-in .25s ease";
+  const wrap = document.createElement("div");
+  wrap.className = "msg-wrap";
+  const meta = document.createElement("div");
+  meta.className = "msg-meta" + (isRight ? " msg-meta-right" : "");
+  meta.textContent = (isRight ? "You" : LEAD_NAME) + " · " + ts;
+  wrap.appendChild(meta);
+  wrap.appendChild(bubbleEl);
+  row.appendChild(wrap);
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+
+  // Update message count in panel header
+  const countId = channel === "email" ? "email-msg-count" : "wa-msg-count";
+  const countEl = document.getElementById(countId);
+  if (countEl) countEl.textContent = parseInt(countEl.textContent || 0) + 1;
+}
+
+/* ── Polling every 2s (reliable cross-browser) ──────── */
+let lastMsgId = 0, lastES = "", lastWS = "";
+
+function poll() {
+  fetch(`/api/lead/${LEAD_ID}/updates?since=${lastMsgId}`)
+    .then(r => r.json())
+    .then(d => {
+      (d.messages || []).forEach(m => {
+        appendBubble(m.channel, m.direction, m.content, m.ts);
+        if (m.id > lastMsgId) lastMsgId = m.id;
+      });
+      if (d.email_status    && d.email_status    !== lastES) { lastES = d.email_status;    updateStatusBadge("email",    d.email_status); }
+      if (d.whatsapp_status && d.whatsapp_status !== lastWS) { lastWS = d.whatsapp_status; updateStatusBadge("whatsapp", d.whatsapp_status); }
+      const el = document.getElementById("live-dot");
+      if (el) { el.style.opacity = "1"; setTimeout(() => el.style.opacity = ".3", 300); }
+    }).catch(() => {});
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Seed lastMsgId to current max so we don't duplicate existing messages
+  fetch(`/api/lead/${LEAD_ID}/updates?since=0`)
+    .then(r => r.json())
+    .then(d => {
+      const msgs = d.messages || [];
+      if (msgs.length) lastMsgId = msgs[msgs.length - 1].id;
+      lastES = d.email_status    || "";
+      lastWS = d.whatsapp_status || "";
+    })
+    .catch(() => {})
+    .finally(() => setInterval(poll, 2000));
+});
+</script>
+
+{% set email_msgs = messages | selectattr('channel', 'equalto', 'email')    | list %}
+{% set wa_msgs    = messages | selectattr('channel', 'equalto', 'whatsapp') | list %}
+
+{# ── Helpers to clean up message content for display ── #}
+{# white-space:pre-wrap on the bubble handles newlines — no <br> needed #}
+
+{% macro clean_email_content(content) %}
+  {%- if content.startswith('Subject: ') -%}
+    {%- set parts = content.split('\n\n', 1) -%}
+    {%- if parts|length > 1 -%}
+      <span style="display:block;font-size:11px;font-weight:700;opacity:.8;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid rgba(255,255,255,0.2)">{{ parts[0][9:] }}</span>{{ parts[1] }}
+    {%- else -%}{{ content }}{%- endif -%}
+  {%- else -%}{{ content }}{%- endif %}
+{% endmacro %}
+
+{% macro clean_received_content(content) %}
+  {%- set lines = content.split('\n') -%}
+  {%- set ns = namespace(out='', done=false) -%}
+  {%- for line in lines -%}
+    {%- if not ns.done -%}
+      {%- if line.strip().startswith('>') or line.strip().startswith('On ') -%}
+        {%- set ns.done = true -%}
+      {%- else -%}
+        {%- set ns.out = ns.out + line + '\n' -%}
+      {%- endif -%}
+    {%- endif -%}
+  {%- endfor -%}
+  {{ ns.out.strip() }}
+{% endmacro %}
+
+{% macro sbadge(val) %}
+  {% if   val == "Not Sent"   %}<span class="s-badge s-notsent">Not Sent</span>
+  {% elif val == "Contacted"  %}<span class="s-badge s-contacted">● Contacted</span>
+  {% elif val == "Replied"    %}<span class="s-badge s-replied">● Replied</span>
+  {% elif val == "Interested" %}<span class="s-badge s-interested">● Interested ✓</span>
+  {% elif val == "Booked"     %}<span class="s-badge s-booked">● Booked 📅</span>
+  {% else                     %}<span class="s-badge s-notsent">{{ val or "Not Sent" }}</span>
+  {% endif %}
+{% endmacro %}
+
+<!-- Header -->
+<div class="d-flex justify-content-between align-items-center mb-2">
+  <small style="color:#444">Lead Detail</small>
+  <span style="font-size:11px; color:#444; display:flex; align-items:center; gap:5px">
+    <span id="live-dot" style="width:7px;height:7px;background:#22c55e;border-radius:50%;opacity:.3;transition:opacity .3s;display:inline-block"></span>
+    Live · updates every 2s
+  </span>
+</div>
+<div class="d-flex flex-column flex-sm-row justify-content-between align-items-start gap-3 mb-4">
+  <div>
+    <a href="/" style="color:#666; font-size:13px; text-decoration:none">← Dashboard</a>
+    <h4 class="fw-bold mt-2 mb-1" style="color:#e8e8f5">{{ lead.name }}</h4>
+    <p style="color:#777; font-size:13px; margin:0">
+      {% if lead.role %}{{ lead.role }}{% endif %}
+      {% if lead.company %} · <span style="color:#555">{{ lead.company }}</span>{% endif %}
+      {% if lead.industry %} · <span style="color:#444; font-size:12px">{{ lead.industry }}</span>{% endif %}
+    </p>
+  </div>
+  <form method="POST" action="/leads/{{ lead.id }}/delete"
+        onsubmit="return confirm('Delete {{ lead.name }}?\n\nThis removes all messages and stops all future outreach.')">
+    <button class="act-btn act-del" style="padding:8px 16px; font-size:13px">🗑 Delete Lead</button>
+  </form>
+</div>
+
+<!-- Info row -->
+<div class="row g-3 mb-4">
+
+  <!-- Contact info -->
+  <div class="col-md-4">
+    <div class="hn-card p-4 h-100">
+      <p style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:.08em; font-weight:600; margin-bottom:14px">Contact Info</p>
+      {% if lead.email %}
+      <div class="info-row"><span class="info-icon">📧</span><span class="info-val">{{ lead.email }}</span></div>
+      {% endif %}
+      {% if lead.whatsapp %}
+      <div class="info-row"><span class="info-icon">💬</span><span class="info-val">{{ lead.whatsapp }}</span></div>
+      {% endif %}
+      {% if lead.notes %}
+      <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:12px; margin-top:4px">
+        <p style="font-size:11px; color:#555; margin-bottom:5px">Notes</p>
+        <p style="font-size:13px; color:#999; line-height:1.5">{{ lead.notes }}</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Channel status -->
+  <div class="col-md-4">
+    <div class="hn-card p-4 h-100">
+      <p style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:.08em; font-weight:600; margin-bottom:14px">Channel Status</p>
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <span style="font-size:13px; color:#888">📧 Email</span>
+        {% set es = lead.email_status or "Not Sent" %}
+        <span id="badge-email-detail" class="s-badge {{ 's-notsent' if es=='Not Sent' else 's-contacted' if es=='Contacted' else 's-replied' if es=='Replied' else 's-interested' if es=='Interested' else 's-booked' }}">
+          {{ '● Contacted' if es=='Contacted' else '● Replied' if es=='Replied' else '● Interested ✓' if es=='Interested' else '● Booked 📅' if es=='Booked' else 'Not Sent' }}
+        </span>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <span style="font-size:13px; color:#888">💬 WhatsApp</span>
+        {% set ws = lead.whatsapp_status or "Not Sent" %}
+        <span id="badge-wa-detail" class="s-badge {{ 's-notsent' if ws=='Not Sent' else 's-contacted' if ws=='Contacted' else 's-replied' if ws=='Replied' else 's-interested' if ws=='Interested' else 's-booked' }}">
+          {{ '● Contacted' if ws=='Contacted' else '● Replied' if ws=='Replied' else '● Interested ✓' if ws=='Interested' else '● Booked 📅' if ws=='Booked' else 'Not Sent' }}
+        </span>
+      </div>
+      <div style="border-top:1px solid rgba(255,255,255,0.06); padding-top:12px; margin-top:14px">
+        <p style="font-size:11px; color:#444">Added {{ lead.created_at.strftime('%b %d, %Y') }}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send buttons -->
+  <div class="col-md-4">
+    <div class="hn-card p-4 h-100">
+      <p style="font-size:11px; color:#555; text-transform:uppercase; letter-spacing:.08em; font-weight:600; margin-bottom:14px">Send Outreach</p>
+      <form method="POST" action="/leads/{{ lead.id }}/send-email" class="mb-2">
+        <button type="submit" class="hn-btn w-100" style="text-align:center; display:block; padding:10px">
+          📧 Send Email
+        </button>
+      </form>
+      {% if lead.whatsapp %}
+      <form method="POST" action="/leads/{{ lead.id }}/send-whatsapp">
+        <button type="submit" class="w-100" style="background:#16a34a; border:none; border-radius:10px; color:#fff; font-size:14px; font-weight:500; padding:10px; cursor:pointer">
+          💬 Send WhatsApp
+        </button>
+      </form>
+      {% endif %}
+      <p style="color:#555; font-size:12px; margin-top:12px; line-height:1.5">
+        Claude generates a personalised message for {{ lead.name }} and sends immediately.
+      </p>
+    </div>
+  </div>
+
+</div>
+
+<!-- Chat panels -->
+<div class="row g-3">
+
+  <!-- EMAIL CHAT -->
+  <div class="col-lg-6">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div class="d-flex align-items-center gap-2">
+          <span style="font-size:18px">📧</span>
+          <div>
+            <div style="font-size:14px; font-weight:600; color:#e8e8f5">Email Conversation</div>
+            <div style="font-size:11px; color:#555"><span id="email-msg-count">{{ email_msgs|length }}</span> message{{ 's' if email_msgs|length != 1 }}</div>
+          </div>
+        </div>
+        {% set es = lead.email_status or "Not Sent" %}
+        <span id="badge-email-panel" class="s-badge {{ 's-notsent' if es=='Not Sent' else 's-contacted' if es=='Contacted' else 's-replied' if es=='Replied' else 's-interested' if es=='Interested' else 's-booked' }}">
+          {{ '● Contacted' if es=='Contacted' else '● Replied' if es=='Replied' else '● Interested ✓' if es=='Interested' else '● Booked 📅' if es=='Booked' else 'Not Sent' }}
+        </span>
+      </div>
+
+      <div id="email-chat-body" class="chat-body">
+        {% if email_msgs %}
+          {% for msg in email_msgs %}
+          <div class="msg-row-{{ msg.direction }}">
+            <div class="msg-wrap">
+              <div class="msg-meta {% if msg.direction == 'sent' %}msg-meta-right{% endif %}">
+                {% if msg.direction == 'sent' %}You · {{ msg.timestamp.strftime('%b %d, %H:%M') }}
+                {% else %}{{ lead.name }} · {{ msg.timestamp.strftime('%b %d, %H:%M') }}{% endif %}
+              </div>
+              <div class="{{ 'bubble-sent' if msg.direction == 'sent' else 'bubble-received' }}">
+                {%- if msg.direction == 'sent' -%}
+                  {{ clean_email_content(msg.content) }}
+                {%- else -%}
+                  {{ clean_received_content(msg.content) }}
+                {%- endif -%}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="chat-empty">
+            <div style="font-size:40px; opacity:.2; margin-bottom:10px">📧</div>
+            <div>No emails yet.</div>
+            <div style="font-size:12px; color:#555; margin-top:4px">Click "Send Email" above to start.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- WHATSAPP CHAT -->
+  <div class="col-lg-6">
+    <div class="chat-panel">
+      <div class="chat-header">
+        <div class="d-flex align-items-center gap-2">
+          <span style="font-size:18px">💬</span>
+          <div>
+            <div style="font-size:14px; font-weight:600; color:#e8e8f5">WhatsApp Conversation</div>
+            <div style="font-size:11px; color:#555"><span id="wa-msg-count">{{ wa_msgs|length }}</span> message{{ 's' if wa_msgs|length != 1 }}</div>
+          </div>
+        </div>
+        {% set ws = lead.whatsapp_status or "Not Sent" %}
+        <span id="badge-wa-panel" class="s-badge {{ 's-notsent' if ws=='Not Sent' else 's-contacted' if ws=='Contacted' else 's-replied' if ws=='Replied' else 's-interested' if ws=='Interested' else 's-booked' }}">
+          {{ '● Contacted' if ws=='Contacted' else '● Replied' if ws=='Replied' else '● Interested ✓' if ws=='Interested' else '● Booked 📅' if ws=='Booked' else 'Not Sent' }}
+        </span>
+      </div>
+
+      <div id="wa-chat-body" class="chat-body" style="background: linear-gradient(rgba(0,0,0,0) 0%, rgba(22,163,74,0.02) 100%)"
+        {% if wa_msgs %}
+          {% for msg in wa_msgs %}
+          <div class="msg-row-{{ msg.direction }}">
+            <div class="msg-wrap">
+              <div class="msg-meta {% if msg.direction == 'sent' %}msg-meta-right{% endif %}">
+                {% if msg.direction == 'sent' %}You · {{ msg.timestamp.strftime('%b %d, %H:%M') }}
+                {% else %}{{ lead.name }} · {{ msg.timestamp.strftime('%b %d, %H:%M') }}{% endif %}
+              </div>
+              <div class="{{ 'bubble-sent-wa' if msg.direction == 'sent' else 'bubble-received' }}">{{ msg.content }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="chat-empty">
+            <div style="font-size:40px; opacity:.2; margin-bottom:10px">💬</div>
+            <div>No WhatsApp messages yet.</div>
+            <div style="font-size:12px; color:#555; margin-top:4px">Click "Send WhatsApp" above to start.</div>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

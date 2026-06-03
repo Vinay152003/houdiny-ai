@@ -1,0 +1,28 @@
+# Environment — contains ALL API keys and credentials — NEVER commit this
+.env
+
+# Database — contains real lead data
+instance/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Claude Code settings (local only)
+.claude/
+
+# OS files
+.DS_Store
+Thumbs.db
