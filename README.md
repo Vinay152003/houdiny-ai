@@ -292,15 +292,38 @@ Also set:
 - `TO_EMAIL=your-gmail@gmail.com`
 
 ### 3. Twilio (WhatsApp)
-1. Sign up at [twilio.com](https://twilio.com) (free trial)
+
+> **Important — Free Trial Limitation:**
+> Twilio's free trial sandbox only allows sending WhatsApp messages to **one phone number** — your own number that you verified during setup. You cannot message other people's numbers on the free trial. To message any number, you need a paid Twilio account with an approved WhatsApp sender.
+
+**Setup steps:**
+
+1. Sign up at [twilio.com](https://twilio.com) — free trial gives $15 credit
 2. From the **Console Dashboard**, copy:
    - `TWILIO_ACCOUNT_SID=AC...`
    - `TWILIO_AUTH_TOKEN=...`
 3. Go to **Messaging → Try it out → Send a WhatsApp message**
-4. Click **Sandbox settings** tab → note the sandbox number
+4. You will see a page with a **QR code** and a **join code** (e.g. `join bright-tiger`)
+
+**Connecting your phone to the sandbox (two ways):**
+
+**Option A — Scan QR code:**
+- Open WhatsApp on your phone
+- Go to **Settings → Linked Devices → Link a Device**
+- Scan the QR code shown on the Twilio page
+
+**Option B — Send join code (easier):**
+- Open WhatsApp on your phone
+- Start a new chat with the Twilio sandbox number (shown on the page, e.g. `+14155238886`)
+- Send the message: `join bright-tiger` (use your actual code)
+- You'll receive a confirmation: "You are all set! The sandbox can now send/receive messages."
+
+5. After joining, note the sandbox number:
    - `TWILIO_WHATSAPP_FROM=whatsapp:+14155238886`
-5. From your phone's WhatsApp, send the join code to that number
-6. Set your number: `YOUR_WHATSAPP_NUMBER=whatsapp:+91XXXXXXXXXX`
+6. Set **your own number** (the one you just joined with):
+   - `YOUR_WHATSAPP_NUMBER=whatsapp:+91XXXXXXXXXX`
+
+> **Note:** Every time you restart ngrok, the public URL changes. You must update the webhook URL in Twilio's Sandbox settings each time. Go to: **Messaging → Try it out → Send a WhatsApp message → Sandbox settings → "WHEN A MESSAGE COMES IN"** → paste the new ngrok URL.
 
 ### 4. ngrok
 1. Sign up at [ngrok.com](https://ngrok.com)

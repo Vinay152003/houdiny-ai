@@ -187,7 +187,7 @@ Max 4 sentences total. Sound like a real person. {calendly_rule}""",
         messages=[{"role": "user", "content":
             f"Lead: {lead['name']}, {lead['role']} at {lead['company']}\n"
             f"Their message: {clean_body}\n"
-            f"Conversation so far:\n{history[:500]}"
+            f"Conversation so far:\n{history[:7000]}"
         }]
     )
     reply_body = resp.content[0].text.strip()

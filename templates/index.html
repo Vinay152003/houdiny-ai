@@ -8,8 +8,8 @@ const S_LABEL = {"Not Sent":"Not Sent","Contacted":"● Contacted","Replied":"�
 function refreshDashboard() {
   fetch("/api/dashboard").then(r=>r.json()).then(d=>{
     if(d.error) return;
-    const ids=["stat-total","stat-emails","stat-wa","stat-replies","stat-booked"];
-    const vals=[d.stats.total,d.stats.emails_sent,d.stats.whatsapp_sent,d.stats.replies,d.stats.booked];
+    const ids=["stat-total","stat-emails","stat-wa","stat-replies"];
+    const vals=[d.stats.total,d.stats.emails_sent,d.stats.whatsapp_sent,d.stats.replies];
     ids.forEach((id,i)=>{const el=document.getElementById(id);if(el)el.textContent=vals[i];});
     (d.leads||[]).forEach(lead=>{
       ["email","whatsapp"].forEach(ch=>{
@@ -46,11 +46,10 @@ document.addEventListener("DOMContentLoaded",()=>setInterval(refreshDashboard,50
 {% endmacro %}
 
 <div class="row g-3 mb-4">
-  <div class="col-6 col-sm-4 col-lg"><div class="stat-card"><div class="stat-icon">📋</div><div id="stat-total"    class="stat-val" style="color:#e8e8f5">{{ stats.total         }}</div><div class="stat-lbl">Total Leads</div></div></div>
-  <div class="col-6 col-sm-4 col-lg"><div class="stat-card"><div class="stat-icon">📧</div><div id="stat-emails"   class="stat-val" style="color:#6ba3f7">{{ stats.emails_sent   }}</div><div class="stat-lbl">Emails Sent</div></div></div>
-  <div class="col-6 col-sm-4 col-lg"><div class="stat-card"><div class="stat-icon">💬</div><div id="stat-wa"       class="stat-val" style="color:#4ade80">{{ stats.whatsapp_sent }}</div><div class="stat-lbl">WhatsApps Sent</div></div></div>
-  <div class="col-6 col-sm-4 col-lg"><div class="stat-card"><div class="stat-icon">↩</div> <div id="stat-replies"  class="stat-val" style="color:#f0c040">{{ stats.replies       }}</div><div class="stat-lbl">Replies</div></div></div>
-  <div class="col-6 col-sm-4 col-lg"><div class="stat-card"><div class="stat-icon">📅</div><div id="stat-booked"   class="stat-val" style="color:#c084fc">{{ stats.booked        }}</div><div class="stat-lbl">Meetings Booked</div></div></div>
+  <div class="col-6 col-sm-3 col-lg"><div class="stat-card"><div class="stat-icon">📋</div><div id="stat-total"    class="stat-val" style="color:#e8e8f5">{{ stats.total         }}</div><div class="stat-lbl">Total Leads</div></div></div>
+  <div class="col-6 col-sm-3 col-lg"><div class="stat-card"><div class="stat-icon">📧</div><div id="stat-emails"   class="stat-val" style="color:#6ba3f7">{{ stats.emails_sent   }}</div><div class="stat-lbl">Emails Sent</div></div></div>
+  <div class="col-6 col-sm-3 col-lg"><div class="stat-card"><div class="stat-icon">💬</div><div id="stat-wa"       class="stat-val" style="color:#4ade80">{{ stats.whatsapp_sent }}</div><div class="stat-lbl">WhatsApps Sent</div></div></div>
+  <div class="col-6 col-sm-3 col-lg"><div class="stat-card"><div class="stat-icon">↩</div> <div id="stat-replies"  class="stat-val" style="color:#f0c040">{{ stats.replies       }}</div><div class="stat-lbl">Replies</div></div></div>
 </div>
 
 <!-- Leads table -->
