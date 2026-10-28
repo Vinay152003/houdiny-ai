@@ -453,6 +453,26 @@ Email and WhatsApp have **separate statuses** — a lead can be "Interested" on 
 
 ---
 
+## Limitations
+
+This is a working demo, not a production deployment. Known constraints:
+
+| Area | Limitation | Production equivalent |
+|---|---|---|
+| Web server | Flask development server — single process, not built for load | Gunicorn / Uvicorn |
+| Database | SQLite — one file, single writer at a time | PostgreSQL |
+| Email sending | Gmail SMTP — ~500 emails/day, sent one at a time | AWS SES / SendGrid |
+| Email replies | Detected on a 30-second polling cycle, not instant | Push via Gmail API / webhook |
+| WhatsApp | Twilio Sandbox — can only message **one** pre-verified number | WhatsApp Business API |
+| Webhook URL | ngrok free URL changes on every restart; must be re-set in Twilio each time | Fixed domain + SSL |
+| Dashboard | No authentication — intended for local/single-user demo use | Auth + multi-tenant access control |
+| Secrets | Stored in a local `.env` file | Secret manager (Vault / AWS Secrets Manager) |
+| Testing | No automated test suite | Unit + integration tests |
+
+The MCP protocol layer itself (JSON-RPC 2.0 over HTTP) is unaffected by these — only the surrounding infrastructure would change for production.
+
+---
+
 ## Troubleshooting
 
 **Email not arriving?**
@@ -471,6 +491,20 @@ Email and WhatsApp have **separate statuses** — a lead can be "Interested" on 
 
 **Database errors?**
 - Delete `instance/houdiny.db` and restart — it will be recreated fresh
+
+---
+
+## Development Notes & Provenance
+
+**How it was built:** This project was developed with AI assistance (Claude Code) used as a pair-programming tool. The author directed the architecture and design, specified every feature and fix, and reviewed, tested, and verified all generated code against real behavior.
+
+**Author's role in verification:** Several bugs were found and fixed through hands-on testing — for example, a context-truncation bug where the AI conversation history was capped at 500 characters (`history[:500]`), causing the agent to re-ask questions the lead had already answered. It was diagnosed by inspecting what the model actually received and fixed by raising the limit to 7000 characters.
+
+**Code provenance:**
+- All files in this repository were authored for this project.
+- No forked repositories, tutorial code, or copied boilerplate.
+- Third-party dependencies are standard open-source libraries (Flask, Anthropic SDK, Twilio SDK, Flask-SQLAlchemy, python-dotenv, pyngrok), listed in `requirements.txt`.
+- The custom MCP server (`mcp_server/server.py`) implements the JSON-RPC 2.0 protocol directly, without using the official MCP SDK.
 
 ---
 
