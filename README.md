@@ -473,6 +473,19 @@ The MCP protocol layer itself (JSON-RPC 2.0 over HTTP) is unaffected by these �
 
 ---
 
+## Known Issues & Next Steps
+
+Issues identified during a self-review pass after the demo. They do not affect the
+demonstrated flow, but are documented here for transparency along with the intended fix.
+
+| Issue | Impact | Intended fix |
+|---|---|---|
+| **WhatsApp webhook runs the agent synchronously** (`app.py` `/webhook`). The agent makes several sequential Claude + tool calls (~20–30s) before the route returns. | Can exceed Twilio's ~15s webhook timeout (error 11200) and hold the connection open. | Process the agent call in a background thread and return empty TwiML immediately — the same pattern the `/send-email` and `/send-whatsapp` routes already use. |
+| **First-name extraction assumes a non-empty name** (`lead['name'].split()[0]` in `outreach.py` and `gmail_poller.py`). | A lead created with an empty name would raise `IndexError` during message generation. The Add-Lead form requires a name, but the `create_lead` tool does not enforce it. | Guard the lookup: `(lead['name'].split() or ["there"])[0]`. |
+| **Meeting booking is not tracked back into the database.** Calendly handles booking on its own domain and never calls back into the app, so the `Booked` status is never set automatically. | The `Booked` stat stays at 0; a confirmed meeting isn't reflected in lead status. | Add a Calendly webhook (or a manual "Mark as Booked" action) to advance the status. |
+
+---
+
 ## Troubleshooting
 
 **Email not arriving?**
