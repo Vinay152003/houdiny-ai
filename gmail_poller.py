@@ -81,7 +81,7 @@ def _get_body(msg):
     return ""
 
 
-def _is_real_reply(sender: str, subject: str) -> bool:
+def _is_real_reply(sender: str, subject: str, is_known_lead: bool = False) -> bool:
     sender_lower = sender.lower()
     subj_lower   = subject.lower()
     # Must be a reply
@@ -90,6 +90,11 @@ def _is_real_reply(sender: str, subject: str) -> bool:
     # Skip our own forwarded demo emails (subject contains "[to:")
     if "[to:" in subj_lower:
         return False
+    # A known lead is always a real sender — bypass the automated-sender filter.
+    # That filter is a loose substring match, so a lead whose From line contains
+    # e.g. "security" or "alert" would otherwise be dropped by mistake.
+    if is_known_lead:
+        return True
     # Skip automated senders
     for skip in SKIP_SENDERS:
         if skip in sender_lower:
@@ -230,10 +235,9 @@ def poll_once():
             subject = _decode_str(msg.get("Subject", ""))
             body    = _get_body(msg)
 
-            if not _is_real_reply(sender, subject):
-                continue
-
             lead = _find_lead_by_email(sender)
+            if not _is_real_reply(sender, subject, is_known_lead=lead is not None):
+                continue
             if not lead or not body.strip():
                 continue
 
